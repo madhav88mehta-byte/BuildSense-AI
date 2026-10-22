@@ -81,6 +81,13 @@ function predictMLP(features, mlp) {
     }
     current = next;
   }
+  // scikit-learn's MLPClassifier uses one sigmoid output for binary labels.
+  // Convert that probability into [class 0, class 1]. Multiclass exports use softmax.
+  if (current.length === 1) {
+    const z = Math.max(-40, Math.min(40, current[0]));
+    const p1 = 1 / (1 + Math.exp(-z));
+    return [1 - p1, p1];
+  }
   return softmax(current);
 }
 function preprocessImage(image, size) {

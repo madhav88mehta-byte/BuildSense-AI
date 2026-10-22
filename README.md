@@ -17,8 +17,8 @@ BuildSense-AI/
 ├── index.html
 ├── styles.css
 ├── app.js
-├── train.py
-├── requirements.txt
+├── training/train.py
+├── training/requirements.txt
 ├── vercel.json
 ├── data/concrete_cracks/raw/   # local dataset; do not commit
 └── public/model.json           # generated after training; required for predictions
@@ -54,7 +54,7 @@ Windows PowerShell, from the repository root:
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r training/requirements.txt
 ```
 
 If you already have a working virtual environment with compatible dependencies, you can use it instead.
@@ -64,13 +64,13 @@ If you already have a working virtual environment with compatible dependencies, 
 Start with a small run first:
 
 ```powershell
-python train.py --data-dir data/concrete_cracks/raw --max-per-class 250 --components 30
+python training/train.py --data-dir data/concrete_cracks/raw --max-per-class 250 --components 30
 ```
 
 Inspect the output: loaded class counts, PCA retained variance, LDA metrics, neural-network metrics, classification report and confusion matrix. If that run succeeds, try a larger experiment:
 
 ```powershell
-python train.py --data-dir data/concrete_cracks/raw --max-per-class 1200 --components 60
+python training/train.py --data-dir data/concrete_cracks/raw --max-per-class 1200 --components 60
 ```
 
 The script uses a stratified train/test split and a fixed random seed. It writes `public/model.json`, which contains PCA, LDA and MLP parameters plus evaluation metrics. The web page uses the PCA and MLP parameters for the displayed prediction; the LDA score is shown separately as an educational diagnostic.

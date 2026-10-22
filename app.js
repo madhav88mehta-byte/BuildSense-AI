@@ -155,6 +155,15 @@ analyzeButton.addEventListener("click", async () => {
     $("predictionStatus").textContent = "COMPLETE";
     $("predictionIcon").textContent = bestIndex === modelData.cracked_class_index ? "⌁" : "✓";
     $("predictionDescription").textContent = "Predicted from the uploaded image using PCA-reduced pixel features and the trained neural network.";
+    const isCracked = bestIndex === modelData.cracked_class_index;
+    $("guidanceStatus").textContent = "PRELIMINARY GUIDANCE";
+    if (isCracked) {
+      $("guidanceTitle").textContent = "Visible crack pattern suspected — inspection recommended";
+      $("guidanceText").textContent = "The model classified this image as cracked. This result alone cannot tell whether plastering is enough or whether the wall needs structural repair or rebuilding. An on-site inspection is needed to check crack width, depth, location, movement, and the wall's role in the building.";
+    } else {
+      $("guidanceTitle").textContent = "No crack pattern detected by the model";
+      $("guidanceText").textContent = "The model classified this image as non-cracked. This does not certify that the wall is safe: hidden defects, small cracks, poor image quality, or surfaces unlike the training images may be missed. Inspect the wall if there are visible warning signs or concerns.";
+    }
     $("confidenceValue").textContent = confidence.toFixed(1) + "%";
     $("confidenceBar").style.width = confidence.toFixed(1) + "%";
     $("ldaScore").textContent = Number(score).toFixed(3);

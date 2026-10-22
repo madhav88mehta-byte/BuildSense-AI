@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+
+# Local image data (do not commit the dataset)
+data/concrete_cracks/raw/
+data/**/*.jpg
+data/**/*.jpeg
+data/**/*.png
+data/**/*.webp
+data/**/*.bmp
+
+# Generated model is created by train.py; commit it only when ready to deploy.
+# Uncomment the next line if you want to keep the model artifact private/local:
+# public/model.json
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/

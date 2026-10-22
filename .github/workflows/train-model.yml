@@ -1,3 +1,4 @@
+# Train a reproducible model and commit model.json for the static Vercel site.
 name: Train BuildSense AI model
 
 on:

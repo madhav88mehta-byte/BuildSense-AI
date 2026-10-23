@@ -9,3 +9,18 @@
 .guidance-grid p{font-size:11px;line-height:1.8;color:#aab6aa;margin:8px 0 0}
 .repair-guidance .guidance-warning{padding-top:14px;border-top:1px solid var(--line);color:#e1c89b}
 @media(max-width:800px){.guidance-grid{grid-template-columns:1fr}}
+
+/* Provisional surface-health indicator — explicitly distinct from model confidence */
+.health-summary{display:grid;grid-template-columns:minmax(180px,.55fr) 1.45fr;gap:24px;align-items:center;margin:20px 0 24px;padding:20px;background:#141b16;border:1px solid #3b493d}
+.health-score{display:flex;flex-direction:column;gap:7px}
+.health-score-label{font:8px var(--mono);letter-spacing:1px;color:#aab7ab}
+.health-score>strong{font-size:48px;line-height:1;color:var(--accent);letter-spacing:-2px}
+.health-score>strong small{font:12px var(--mono);letter-spacing:0;color:#aab7ab;margin-left:4px}
+.health-grade{font-size:11px;color:#e0e9dc}
+.health-meter-wrap{min-width:0}
+.health-meter{height:7px;background:#303a32;overflow:hidden}
+.health-meter span{display:block;width:0;height:100%;background:var(--accent);transition:width .3s}
+.health-meter span.health-caution{background:#e4b36d}
+.health-meter-wrap p{font-size:11px;line-height:1.7;color:#bdc7bd;margin:12px 0 8px}
+.health-meter-wrap>small{font:8px var(--mono);letter-spacing:.5px;color:#e0b978}
+@media(max-width:520px){.health-summary{grid-template-columns:1fr;gap:18px}.health-score>strong{font-size:40px}}

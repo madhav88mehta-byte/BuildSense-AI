@@ -157,6 +157,16 @@ analyzeButton.addEventListener("click", async () => {
     $("predictionDescription").textContent = "Predicted from the uploaded image using PCA-reduced pixel features and the trained neural network.";
     const isCracked = bestIndex === modelData.cracked_class_index;
     $("guidanceStatus").textContent = "PRELIMINARY GUIDANCE";
+    // Prototype-only heuristic: this is deliberately separate from neural-network confidence.
+    // It is not trained or validated as a wall-quality metric.
+    const healthScore = isCracked ? 55 : 85;
+    $("healthScore").innerHTML = healthScore + "<small>/100</small>";
+    $("healthGrade").textContent = isCracked ? "Needs inspection" : "No crack pattern detected";
+    $("healthMeterFill").style.width = healthScore + "%";
+    $("healthMeterFill").classList.toggle("health-caution", isCracked);
+    $("healthSummary").textContent = isCracked
+      ? "A crack pattern was detected, so this prototype assigns a lower surface indicator. Crack severity and structural condition are not measured."
+      : "No crack pattern was detected, so this prototype shows a higher surface indicator. This is not proof of good wall health or safety.";
     if (isCracked) {
       $("guidanceTitle").textContent = "Visible crack pattern suspected — inspection recommended";
       $("guidanceText").textContent = "The model classified this image as cracked. This result alone cannot tell whether plastering is enough or whether the wall needs structural repair or rebuilding. An on-site inspection is needed to check crack width, depth, location, movement, and the wall's role in the building.";

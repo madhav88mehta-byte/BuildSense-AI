@@ -5,6 +5,52 @@ const preview = $("imagePreview");
 const analyzeButton = $("analyzeButton");
 let selectedFile = null;
 let modelData = null;
+let previewObjectUrl = null;
+
+function resetPhoto() {
+  if (previewObjectUrl) {
+    URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = null;
+  }
+  selectedFile = null;
+  input.value = "";
+  preview.removeAttribute("src");
+  preview.hidden = true;
+  $( "previewStage" ).querySelector(".empty-preview").classList.remove("hidden");
+  $("fileName").textContent = "No image selected";
+  $("imageDimensions").textContent = "— × —";
+  $("imageState").textContent = "WAITING FOR INPUT";
+  $("resetButton").disabled = true;
+  analyzeButton.disabled = true;
+
+  $("predictionLabel").textContent = "Awaiting image";
+  $("predictionStatus").textContent = "NO RESULT";
+  $("predictionIcon").textContent = "⌁";
+  $("predictionDescription").textContent = "Choose a concrete image and run the trained model to see its output.";
+  $("confidenceValue").textContent = "—";
+  $("confidenceBar").style.width = "0%";
+  $("ldaScore").textContent = "—";
+
+  $("pcaStatus").textContent = "WAITING";
+  $("pcaComponents").textContent = "—";
+  $("pcaVariance").textContent = "—";
+  $("pcaPlot").querySelectorAll(".pca-point,.plot-placeholder").forEach((el) => el.remove());
+  const placeholder = document.createElement("div");
+  placeholder.className = "plot-placeholder";
+  placeholder.textContent = "PCA projection appears after analysis";
+  $("pcaPlot").appendChild(placeholder);
+
+  $("guidanceStatus").textContent = "AWAITING ANALYSIS";
+  $("healthScore").innerHTML = "—<small>/100</small>";
+  $("healthGrade").textContent = "Awaiting image";
+  $("healthMeterFill").style.width = "0%";
+  $("healthMeterFill").classList.remove("health-caution");
+  $("healthSummary").textContent = "Run an image analysis to get a preliminary surface-condition indication.";
+  $("guidanceTitle").textContent = "A practical next step will appear here";
+  $("guidanceText").textContent = "Upload a surface image and select Analyze surface. This prototype classifies crack presence and shows a provisional surface-condition indicator; it does not measure crack severity or determine structural safety.";
+}
+
+$("resetButton").addEventListener("click", resetPhoto);
 
 async function loadModel() {
   try {
@@ -28,18 +74,19 @@ function setFile(file) {
     alert("Please select an image file (JPG, PNG or WEBP).");
     return;
   }
+  if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
   selectedFile = file;
-  const url = URL.createObjectURL(file);
+  previewObjectUrl = URL.createObjectURL(file);
   preview.onload = () => {
     $("imageDimensions").textContent = preview.naturalWidth + " × " + preview.naturalHeight;
-    URL.revokeObjectURL(url);
   };
-  preview.src = url;
+  preview.src = previewObjectUrl;
   preview.hidden = false;
   dropzone.classList.remove("dragging");
   $("previewStage").querySelector(".empty-preview").classList.add("hidden");
   $("fileName").textContent = file.name;
   $("imageState").textContent = "IMAGE LOADED";
+  $("resetButton").disabled = false;
   analyzeButton.disabled = !modelData;
   $("resultsSection").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }

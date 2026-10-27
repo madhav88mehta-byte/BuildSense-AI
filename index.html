@@ -106,6 +106,22 @@
         </div>
       </section>
 
+      <section class="crack-marking-section" id="crackMarkingSection">
+        <div class="section-heading"><div><p class="eyebrow">04 — IMAGE PROCESSING</p><h2>Crack detection &amp; marking</h2></div><span class="step-count">STEP 04 <span>/ 04</span></span></div>
+        <div class="marking-panel">
+          <div class="panel-topline"><span>PRELIMINARY CRACK REGIONS</span><span id="markingStatus">AWAITING ANALYSIS</span></div>
+          <div class="marking-canvas-wrap">
+            <canvas id="markingCanvas" aria-label="Uploaded image with suspected crack regions marked in red"></canvas>
+            <div class="marking-empty" id="markingEmpty">Run Analyze Surface to view suspected crack markings.</div>
+          </div>
+          <div class="marking-summary" aria-live="polite">
+            <div><span class="marking-count-label">SUSPECTED CRACK REGIONS</span><strong id="crackCount">—</strong></div>
+            <p id="crackCountText">The number of candidate regions will appear here after image processing.</p>
+          </div>
+          <p class="marking-disclaimer">Preliminary image-processing estimate only. Red circles mark dark, crack-like image regions; one region is not necessarily one physical crack. Shadows, stains, texture, and image quality can affect the count. This is not a validated crack measurement or structural safety assessment.</p>
+        </div>
+      </section>
+
       <section class="model-notice" id="modelNotice">
         <div class="notice-icon">i</div><div><strong>Model setup required</strong><p>The interface is ready, but predictions stay disabled until you train the models on the genuine labelled concrete image dataset. Follow the README to generate <code>public/model.json</code>.</p></div>
       </section>

@@ -31,3 +31,17 @@
 .reset-button:hover:not(:disabled){border-color:var(--accent);color:var(--accent);background:#222f23}
 .reset-button:disabled{opacity:.35;cursor:not-allowed}
 @media(max-width:450px){.image-actions{grid-template-columns:1fr}.reset-button{min-height:42px}}
+
+/* Preliminary crack localization and region count */
+.crack-marking-section{padding:50px 0 58px;border-bottom:1px solid var(--line)}
+.marking-panel{padding:20px;background:var(--panel);border:1px solid var(--line)}
+.marking-canvas-wrap{position:relative;min-height:180px;margin-top:16px;background:#111714;border:1px solid #2d3830;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#markingCanvas{display:block;max-width:100%;max-height:620px;width:auto;height:auto;object-fit:contain}
+.marking-empty{padding:50px 18px;text-align:center;color:#829084;font:10px var(--mono);letter-spacing:.5px}
+.marking-summary{display:flex;align-items:center;gap:22px;padding:17px 0;border-bottom:1px solid var(--line)}
+.marking-summary>div{min-width:130px;display:flex;flex-direction:column;gap:5px}
+.marking-count-label{font:8px var(--mono);letter-spacing:.7px;color:#aab7ab}
+.marking-summary strong{font-size:30px;color:#ff5555;line-height:1}
+.marking-summary p,.marking-disclaimer{font-size:10px;line-height:1.7;color:#aab6aa;margin:0}
+.marking-disclaimer{color:#d2b98f;margin-top:13px}
+@media(max-width:520px){.marking-panel{padding:14px}.marking-summary{align-items:flex-start;gap:12px;flex-direction:column}}

@@ -169,136 +169,124 @@ function ldaDecision(features, lda) {
 }
 function markSuspectedCracks(image) {
   const canvas = $("markingCanvas");
-  const maxSide = 900;
-  const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+  const scale = Math.min(1, 1000 / Math.max(image.naturalWidth, image.naturalHeight));
   const width = Math.max(1, Math.round(image.naturalWidth * scale));
   const height = Math.max(1, Math.round(image.naturalHeight * scale));
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = width; canvas.height = height;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   ctx.drawImage(image, 0, 0, width, height);
-  const pixels = ctx.getImageData(0, 0, width, height);
-  const data = pixels.data;
-  const total = width * height;
+  const source = ctx.getImageData(0, 0, width, height);
+  const rgba = source.data, total = width * height, stride = width + 1;
   const gray = new Uint8Array(total);
   for (let i = 0; i < total; i++) {
     const p = i * 4;
-    gray[i] = Math.round(0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2]);
+    gray[i] = Math.round(0.299 * rgba[p] + 0.587 * rgba[p + 1] + 0.114 * rgba[p + 2]);
   }
 
-  // Integral image gives a stable local brightness estimate at multiple image sizes.
-  const stride = width + 1;
+  // Local mean lets the detector adapt to lighting; use a stricter dark-pixel
+  // threshold so ordinary concrete texture does not connect the whole image.
   const integral = new Float64Array((width + 1) * (height + 1));
   for (let y = 1; y <= height; y++) {
-    let rowSum = 0;
+    let row = 0;
     for (let x = 1; x <= width; x++) {
-      rowSum += gray[(y - 1) * width + (x - 1)];
-      integral[y * stride + x] = integral[(y - 1) * stride + x] + rowSum;
+      row += gray[(y - 1) * width + x - 1];
+      integral[y * stride + x] = integral[(y - 1) * stride + x] + row;
     }
   }
-  const radius = Math.max(5, Math.round(Math.min(width, height) * 0.018));
+  const radius = Math.max(7, Math.round(Math.min(width, height) * 0.025));
   const mask = new Uint8Array(total);
-  for (let y = 0; y < height; y++) {
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const x1 = Math.max(0, x - radius), x2 = Math.min(width, x + radius + 1);
     const y1 = Math.max(0, y - radius), y2 = Math.min(height, y + radius + 1);
-    for (let x = 0; x < width; x++) {
-      const x1 = Math.max(0, x - radius), x2 = Math.min(width, x + radius + 1);
-      const area = (x2 - x1) * (y2 - y1);
-      const sum = integral[y2 * stride + x2] - integral[y1 * stride + x2] - integral[y2 * stride + x1] + integral[y1 * stride + x1];
-      const localMean = sum / area;
-      const darkness = localMean - gray[y * width + x];
-      // Ignore bright texture; retain dark, locally contrasting crack pixels.
-      if (gray[y * width + x] < 150 && darkness > 20) mask[y * width + x] = 1;
-    }
+    const area = (x2 - x1) * (y2 - y1);
+    const sum = integral[y2 * stride + x2] - integral[y1 * stride + x2] - integral[y2 * stride + x1] + integral[y1 * stride + x1];
+    const contrast = sum / area - gray[y * width + x];
+    if (gray[y * width + x] < 112 && contrast > 22) mask[y * width + x] = 1;
   }
 
-  // A single 3x3 closing pass joins tiny gaps along a continuous crack without
-  // aggressively merging distant specks into giant circular regions.
-  const dilated = new Uint8Array(total);
-  for (let y = 1; y < height - 1; y++) for (let x = 1; x < width - 1; x++) {
-    let on = 0;
-    for (let dy = -1; dy <= 1 && !on; dy++) for (let dx = -1; dx <= 1; dx++) if (mask[(y + dy) * width + x + dx]) { on = 1; break; }
-    if (on) dilated[y * width + x] = 1;
-  }
-  const closed = new Uint8Array(total);
-  for (let y = 1; y < height - 1; y++) for (let x = 1; x < width - 1; x++) {
-    let all = 1;
-    for (let dy = -1; dy <= 1 && all; dy++) for (let dx = -1; dx <= 1; dx++) if (!dilated[(y + dy) * width + x + dx]) { all = 0; break; }
-    if (all) closed[y * width + x] = 1;
-  }
-
-  const visited = new Uint8Array(total);
-  const components = [];
-  const minPixels = Math.max(10, Math.round(total * 0.000025));
+  // Connected components on the un-dilated mask preserve separate crack paths.
+  const visited = new Uint8Array(total), regions = [];
+  const minArea = Math.max(7, Math.round(total * 0.000008));
+  const minLength = Math.max(9, Math.round(Math.min(width, height) * 0.018));
   for (let start = 0; start < total; start++) {
-    if (!closed[start] || visited[start]) continue;
-    const stack = [start];
+    if (!mask[start] || visited[start]) continue;
+    const stack = [start], points = [];
     visited[start] = 1;
-    let count = 0, minX = width, minY = height, maxX = 0, maxY = 0;
+    let minX = width, minY = height, maxX = 0, maxY = 0, sumX = 0, sumY = 0, sumXX = 0, sumYY = 0, sumXY = 0;
     while (stack.length) {
-      const at = stack.pop();
-      const x = at % width, y = Math.floor(at / width);
-      count++;
+      const at = stack.pop(), x = at % width, y = Math.floor(at / width);
+      points.push(at);
       minX = Math.min(minX, x); maxX = Math.max(maxX, x);
       minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+      sumX += x; sumY += y; sumXX += x*x; sumYY += y*y; sumXY += x*y;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         if (!dx && !dy) continue;
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
         const ni = ny * width + nx;
-        if (closed[ni] && !visited[ni]) { visited[ni] = 1; stack.push(ni); }
+        if (mask[ni] && !visited[ni]) { visited[ni] = 1; stack.push(ni); }
       }
     }
-    const boxWidth = maxX - minX + 1, boxHeight = maxY - minY + 1;
-    const longSide = Math.max(boxWidth, boxHeight);
-    const shortSide = Math.max(1, Math.min(boxWidth, boxHeight));
-    const elongation = longSide / shortSide;
-    // Keep both small, line-like cracks and large connected crack branches;
-    // reject isolated texture dots and broad shadow patches.
-    if (count >= minPixels && longSide >= Math.max(12, Math.round(Math.min(width, height) * 0.025)) &&
-        (elongation >= 1.7 || count >= total * 0.00035)) {
-      components.push({ minX, minY, maxX, maxY, count, boxWidth, boxHeight, longSide });
+    const boxW = maxX - minX + 1, boxH = maxY - minY + 1;
+    const length = Math.max(boxW, boxH), thickness = Math.max(1, Math.min(boxW, boxH));
+    const elongation = length / thickness;
+    const n = points.length;
+    const vx = sumXX / n - (sumX / n) ** 2;
+    const vy = sumYY / n - (sumY / n) ** 2;
+    const cov = sumXY / n - (sumX / n) * (sumY / n);
+    const angle = 0.5 * Math.atan2(2 * cov, vx - vy);
+    // Keep prominent thick cracks as well as thin elongated hairline segments.
+    if (n >= minArea && length >= minLength && (elongation >= 1.45 || n >= total * 0.00012)) {
+      regions.push({ points, minX, minY, maxX, maxY, length, angle, area: n });
     }
   }
 
-  // Merge only boxes that overlap or nearly touch; do not merge by large radius.
+  // Join only close, similarly oriented fragments; never use a large radius
+  // that can combine unrelated texture into one image-sized box.
   const merged = [];
-  for (const item of components.sort((a, b) => b.count - a.count)) {
-    let target = merged.find((m) =>
-      item.minX <= m.maxX + 5 && item.maxX >= m.minX - 5 &&
-      item.minY <= m.maxY + 5 && item.maxY >= m.minY - 5
-    );
-    if (target) {
-      target.minX = Math.min(target.minX, item.minX); target.minY = Math.min(target.minY, item.minY);
-      target.maxX = Math.max(target.maxX, item.maxX); target.maxY = Math.max(target.maxY, item.maxY);
-      target.count += item.count;
-    } else merged.push({ ...item });
+  for (const region of regions.sort((a,b) => b.area-a.area)) {
+    const match = merged.find(m => {
+      const gapX = Math.max(0, region.minX - m.maxX, m.minX - region.maxX);
+      const gapY = Math.max(0, region.minY - m.maxY, m.minY - region.maxY);
+      const angleDiff = Math.abs(Math.atan2(Math.sin(region.angle-m.angle), Math.cos(region.angle-m.angle)));
+      return Math.hypot(gapX,gapY) < Math.max(5, Math.min(width,height)*0.012) && angleDiff < 0.45;
+    });
+    if (match) {
+      match.points.push(...region.points);
+      match.minX=Math.min(match.minX,region.minX); match.minY=Math.min(match.minY,region.minY);
+      match.maxX=Math.max(match.maxX,region.maxX); match.maxY=Math.max(match.maxY,region.maxY);
+      match.area+=region.area;
+    } else merged.push({...region,points:[...region.points]});
   }
 
-  // Tight rectangular outlines follow each candidate's actual footprint.
-  ctx.lineWidth = Math.max(2, width / 420);
-  ctx.strokeStyle = "#ff3d3d";
-  ctx.fillStyle = "rgba(255, 45, 45, 0.07)";
-  merged.forEach((region, i) => {
-    const pad = Math.max(4, Math.round(Math.min(width, height) * 0.008));
-    const x = Math.max(0, region.minX - pad), y = Math.max(0, region.minY - pad);
-    const w = Math.min(width - x, region.maxX - region.minX + 1 + pad * 2);
-    const h = Math.min(height - y, region.maxY - region.minY + 1 + pad * 2);
-    ctx.fillRect(x, y, w, h);
-    ctx.strokeRect(x, y, w, h);
-    ctx.fillStyle = "#ff3d3d";
-    ctx.font = "bold 12px sans-serif";
-    ctx.fillText("R" + (i + 1), x + 3, Math.max(13, y - 4));
-    ctx.fillStyle = "rgba(255, 45, 45, 0.07)";
+  // Paint a thin red overlay directly on candidate pixels: the marking follows
+  // the crack-like line instead of drawing a huge circle or bounding rectangle.
+  const output = ctx.getImageData(0,0,width,height);
+  const out = output.data;
+  const marked = new Uint8Array(total);
+  merged.forEach((region, index) => {
+    for (const at of region.points) {
+      marked[at] = 1;
+      const x=at%width,y=Math.floor(at/width);
+      for (let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+        const nx=x+dx,ny=y+dy;
+        if(nx>=0&&nx<width&&ny>=0&&ny<height) marked[ny*width+nx]=1;
+      }
+    }
   });
+  for(let i=0;i<total;i++) if(marked[i]){
+    const p=i*4;
+    out[p]=255; out[p+1]=35; out[p+2]=45; out[p+3]=Math.max(out[p+3],225);
+  }
+  ctx.putImageData(output,0,0);
 
-  const crackPixels = merged.reduce((sum, r) => sum + r.count, 0);
-  const largestExtent = merged.reduce((max, r) => Math.max(max, r.longSide / Math.max(width, height)), 0);
-  const coverage = crackPixels / total;
-  $("markingStatus").textContent = merged.length ? "CRACK-LIKE REGIONS MARKED" : "NO REGIONS FOUND";
+  const coverage = merged.reduce((s,r)=>s+r.area,0)/total;
+  const largestExtent = merged.reduce((m,r)=>Math.max(m,r.length/Math.max(width,height)),0);
+  $("markingStatus").textContent = merged.length ? "CRACK-LIKE PATHS HIGHLIGHTED" : "NO REGIONS FOUND";
   $("crackCount").textContent = String(merged.length);
   $("crackCountText").textContent = merged.length
-    ? "Red outlines identify " + merged.length + " candidate regions. Larger connected regions are retained alongside smaller line-like candidates; these are not verified physical crack counts."
-    : "No clear crack-like regions were identified in this image-processing pass. This does not guarantee the surface is crack-free.";
+    ? "Red pixels trace " + merged.length + " candidate crack-like paths. Both prominent dark lines and smaller thin segments are included; this is not a verified physical crack count."
+    : "No clear crack-like paths were identified. This does not guarantee the surface is crack-free.";
   $("markingEmpty").classList.add("hidden");
   return { count: merged.length, coverage, largestExtent, components: merged };
 }

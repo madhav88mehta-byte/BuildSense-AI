@@ -55,7 +55,10 @@
               <img id="imagePreview" alt="Selected concrete surface preview" hidden />
             </div>
             <div class="preview-meta"><span id="fileName">No image selected</span><span id="imageDimensions">— × —</span></div>
-            <button class="primary-button" id="analyzeButton" disabled><span>Analyze surface</span><span class="button-arrow">↗</span></button>
+            <div class="image-actions">
+              <button class="primary-button" id="analyzeButton" disabled><span>Analyze surface</span><span class="button-arrow">↗</span></button>
+              <button class="reset-button" id="resetButton" type="button" disabled>↺ <span>Reset photo</span></button>
+            </div>
             <p class="button-note" id="modelStatus">Checking whether a trained model is available…</p>
           </div>
         </div>

@@ -201,7 +201,14 @@ function markSuspectedCracks(image) {
     const area = (x2 - x1) * (y2 - y1);
     const sum = integral[y2 * stride + x2] - integral[y1 * stride + x2] - integral[y2 * stride + x1] + integral[y1 * stride + x1];
     const contrast = sum / area - gray[y * width + x];
-    if (gray[y * width + x] < 112 && contrast > 22) mask[y * width + x] = 1;
+    // Ignore a narrow frame where image borders can create false crack lines,
+    // and the common bottom-left camera/lens overlay area.
+    const edge = Math.min(width, height) * 0.012;
+    const inCameraOverlay = x < width * 0.075 && y > height * 0.86;
+    if (x > edge && x < width - edge && y > edge && y < height - edge &&
+        !inCameraOverlay && gray[y * width + x] < 112 && contrast > 25) {
+      mask[y * width + x] = 1;
+    }
   }
 
   // Connected components on the un-dilated mask preserve separate crack paths.
@@ -259,24 +266,43 @@ function markSuspectedCracks(image) {
     } else merged.push({...region,points:[...region.points]});
   }
 
-  // Paint a thin red overlay directly on candidate pixels: the marking follows
-  // the crack-like line instead of drawing a huge circle or bounding rectangle.
+  // Thin the binary crack mask with Zhang-Suen skeletonization. This keeps
+  // the red trace close to the crack centerline instead of painting it solid.
+  const skeleton = new Uint8Array(total);
+  for (let i = 0; i < total; i++) if (mask[i]) skeleton[i] = 1;
+  let changed = true, passes = 0;
+  while (changed && passes < 24) {
+    changed = false; passes++;
+    for (let phase = 0; phase < 2; phase++) {
+      const remove = [];
+      for (let y = 1; y < height - 1; y++) for (let x = 1; x < width - 1; x++) {
+        const at = y * width + x;
+        if (!skeleton[at]) continue;
+        const p2=skeleton[at-width], p3=skeleton[at-width+1], p4=skeleton[at+1], p5=skeleton[at+width+1];
+        const p6=skeleton[at+width], p7=skeleton[at+width-1], p8=skeleton[at-1], p9=skeleton[at-width-1];
+        const neighbors=[p2,p3,p4,p5,p6,p7,p8,p9];
+        const count=neighbors.reduce((a,b)=>a+b,0);
+        let transitions=0;
+        for(let k=0;k<8;k++) if(!neighbors[k] && neighbors[(k+1)%8]) transitions++;
+        if(count<2 || count>6 || transitions!==1) continue;
+        const conditionA = phase===0 ? (p2*p4*p6===0 && p4*p6*p8===0) : (p2*p4*p8===0 && p2*p6*p8===0);
+        if(conditionA) remove.push(at);
+      }
+      if(remove.length){ changed=true; for(const at of remove) skeleton[at]=0; }
+    }
+  }
+
+  // Keep only skeleton pixels belonging to accepted components; blend a
+  // one-pixel red trace so the concrete and original crack remain visible.
   const output = ctx.getImageData(0,0,width,height);
   const out = output.data;
-  const marked = new Uint8Array(total);
-  merged.forEach((region, index) => {
-    for (const at of region.points) {
-      marked[at] = 1;
-      const x=at%width,y=Math.floor(at/width);
-      for (let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
-        const nx=x+dx,ny=y+dy;
-        if(nx>=0&&nx<width&&ny>=0&&ny<height) marked[ny*width+nx]=1;
-      }
-    }
-  });
-  for(let i=0;i<total;i++) if(marked[i]){
-    const p=i*4;
-    out[p]=255; out[p+1]=35; out[p+2]=45; out[p+3]=Math.max(out[p+3],225);
+  const accepted = new Uint8Array(total);
+  for (const region of merged) for (const at of region.points) accepted[at]=1;
+  for(let i=0;i<total;i++) if(skeleton[i] && accepted[i]){
+    const p=i*4, alpha=0.78;
+    out[p]=Math.round(out[p]*(1-alpha)+255*alpha);
+    out[p+1]=Math.round(out[p+1]*(1-alpha)+35*alpha);
+    out[p+2]=Math.round(out[p+2]*(1-alpha)+45*alpha);
   }
   ctx.putImageData(output,0,0);
 
@@ -285,7 +311,7 @@ function markSuspectedCracks(image) {
   $("markingStatus").textContent = merged.length ? "CRACK-LIKE PATHS HIGHLIGHTED" : "NO REGIONS FOUND";
   $("crackCount").textContent = String(merged.length);
   $("crackCountText").textContent = merged.length
-    ? "Red pixels trace " + merged.length + " candidate crack-like paths. Both prominent dark lines and smaller thin segments are included; this is not a verified physical crack count."
+    ? "Thin red centerline traces highlight " + merged.length + " candidate crack-like paths. Large connected cracks and smaller branches are retained; isolated texture and border artifacts are filtered where possible. This is not a verified physical crack count."
     : "No clear crack-like paths were identified. This does not guarantee the surface is crack-free.";
   $("markingEmpty").classList.add("hidden");
   return { count: merged.length, coverage, largestExtent, components: merged };

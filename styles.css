@@ -24,3 +24,10 @@
 .health-meter-wrap p{font-size:11px;line-height:1.7;color:#bdc7bd;margin:12px 0 8px}
 .health-meter-wrap>small{font:8px var(--mono);letter-spacing:.5px;color:#e0b978}
 @media(max-width:520px){.health-summary{grid-template-columns:1fr;gap:18px}.health-score>strong{font-size:40px}}
+
+/* Image actions and photo reset control */
+.image-actions{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:stretch}
+.reset-button{border:1px solid #53634f;background:transparent;color:#d6e1d2;padding:0 17px;font:600 11px var(--sans);cursor:pointer;transition:.18s;white-space:nowrap}
+.reset-button:hover:not(:disabled){border-color:var(--accent);color:var(--accent);background:#222f23}
+.reset-button:disabled{opacity:.35;cursor:not-allowed}
+@media(max-width:450px){.image-actions{grid-template-columns:1fr}.reset-button{min-height:42px}}

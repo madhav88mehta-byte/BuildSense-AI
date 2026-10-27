@@ -48,6 +48,7 @@ function resetPhoto() {
   $("healthSummary").textContent = "Run an image analysis to get a preliminary surface-condition indication.";
   $("guidanceTitle").textContent = "A practical next step will appear here";
   $("guidanceText").textContent = "Upload a surface image and select Analyze surface. This prototype classifies crack presence and shows a provisional surface-condition indicator; it does not measure crack severity or determine structural safety.";
+  clearCrackMarkings();
 }
 
 $("resetButton").addEventListener("click", resetPhoto);
@@ -166,6 +167,129 @@ function ldaDecision(features, lda) {
   for (let i = 0; i < features.length; i++) score += features[i] * lda.coef[0][i];
   return score;
 }
+function markSuspectedCracks(image) {
+  const canvas = $("markingCanvas");
+  const maxSide = 900;
+  const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(image, 0, 0, width, height);
+  const pixels = ctx.getImageData(0, 0, width, height);
+  const data = pixels.data;
+  const gray = new Uint8Array(width * height);
+  for (let i = 0; i < gray.length; i++) {
+    const p = i * 4;
+    gray[i] = Math.round(0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2]);
+  }
+
+  // Local-contrast threshold: find pixels darker than their surrounding neighborhood.
+  const mask = new Uint8Array(width * height);
+  const radius = 4;
+  for (let y = radius; y < height - radius; y++) {
+    for (let x = radius; x < width - radius; x++) {
+      let sum = 0, count = 0;
+      for (let dy = -radius; dy <= radius; dy += 2) {
+        for (let dx = -radius; dx <= radius; dx += 2) {
+          sum += gray[(y + dy) * width + (x + dx)];
+          count++;
+        }
+      }
+      const index = y * width + x;
+      if (gray[index] < (sum / count) - 22) mask[index] = 1;
+    }
+  }
+
+  // Group neighboring dark pixels into candidate regions.
+  const visited = new Uint8Array(width * height);
+  const components = [];
+  const minPixels = Math.max(7, Math.round(width * height * 0.000018));
+  const maxPixels = Math.round(width * height * 0.08);
+  for (let start = 0; start < mask.length; start++) {
+    if (!mask[start] || visited[start]) continue;
+    const stack = [start];
+    visited[start] = 1;
+    let count = 0, minX = width, minY = height, maxX = 0, maxY = 0;
+    while (stack.length) {
+      const index = stack.pop();
+      const x = index % width, y = Math.floor(index / width);
+      count++;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+          const next = ny * width + nx;
+          if (mask[next] && !visited[next]) {
+            visited[next] = 1;
+            stack.push(next);
+          }
+        }
+      }
+    }
+    const boxWidth = maxX - minX + 1, boxHeight = maxY - minY + 1;
+    const elongation = Math.max(boxWidth, boxHeight) / Math.max(1, Math.min(boxWidth, boxHeight));
+    if (count >= minPixels && count <= maxPixels && elongation >= 1.35) {
+      components.push({ minX, minY, maxX, maxY, count });
+    }
+  }
+
+  // Merge nearby candidate boxes so one irregular crack is less likely to be counted repeatedly.
+  const merged = [];
+  for (const component of components.sort((a, b) => b.count - a.count)) {
+    const cx = (component.minX + component.maxX) / 2;
+    const cy = (component.minY + component.maxY) / 2;
+    const nearby = merged.find((item) => {
+      const mx = (item.minX + item.maxX) / 2, my = (item.minY + item.maxY) / 2;
+      const reach = Math.max(item.maxX - item.minX, item.maxY - item.minY, component.maxX - component.minX, component.maxY - component.minY, 18);
+      return Math.hypot(cx - mx, cy - my) < reach * 0.65;
+    });
+    if (nearby) {
+      nearby.minX = Math.min(nearby.minX, component.minX);
+      nearby.minY = Math.min(nearby.minY, component.minY);
+      nearby.maxX = Math.max(nearby.maxX, component.maxX);
+      nearby.maxY = Math.max(nearby.maxY, component.maxY);
+    } else merged.push({ ...component });
+  }
+
+  ctx.lineWidth = Math.max(2, width / 300);
+  ctx.strokeStyle = "#ff3434";
+  ctx.fillStyle = "rgba(255, 35, 35, 0.08)";
+  merged.forEach((region) => {
+    const cx = (region.minX + region.maxX) / 2;
+    const cy = (region.minY + region.maxY) / 2;
+    const radius = Math.max(13, Math.hypot(region.maxX - region.minX, region.maxY - region.minY) / 2 + 9);
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+  $("markingStatus").textContent = merged.length ? "REGIONS MARKED" : "NO REGIONS FOUND";
+  $("crackCount").textContent = String(merged.length);
+  $("crackCountText").textContent = merged.length
+    ? "Suspected crack-like regions marked in red. These are image-processing candidates, not a verified count of physical cracks."
+    : "No crack-like regions were identified by this preliminary image-processing pass. This does not guarantee the surface is crack-free.";
+  $("markingEmpty").classList.add("hidden");
+}
+
+function clearCrackMarkings() {
+  const canvas = $("markingCanvas");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  canvas.width = 0;
+  canvas.height = 0;
+  $("markingStatus").textContent = "AWAITING ANALYSIS";
+  $("crackCount").textContent = "—";
+  $("crackCountText").textContent = "The number of candidate regions will appear here after image processing.";
+  $("markingEmpty").classList.remove("hidden");
+}
+
 function drawProjection(features, pca) {
   const plot = $("pcaPlot");
   plot.querySelectorAll(".pca-point,.plot-placeholder").forEach((el) => el.remove());
@@ -226,6 +350,7 @@ analyzeButton.addEventListener("click", async () => {
     $("ldaScore").textContent = Number(score).toFixed(3);
     $("imageState").textContent = "ANALYSIS COMPLETE";
     drawProjection(features, modelData.pca);
+    markSuspectedCracks(preview);
     $("resultsSection").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     console.error(error);

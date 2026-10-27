@@ -179,105 +179,129 @@ function markSuspectedCracks(image) {
   ctx.drawImage(image, 0, 0, width, height);
   const pixels = ctx.getImageData(0, 0, width, height);
   const data = pixels.data;
-  const gray = new Uint8Array(width * height);
-  for (let i = 0; i < gray.length; i++) {
+  const total = width * height;
+  const gray = new Uint8Array(total);
+  for (let i = 0; i < total; i++) {
     const p = i * 4;
     gray[i] = Math.round(0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2]);
   }
 
-  // Local-contrast threshold: find pixels darker than their surrounding neighborhood.
-  const mask = new Uint8Array(width * height);
-  const radius = 4;
-  for (let y = radius; y < height - radius; y++) {
-    for (let x = radius; x < width - radius; x++) {
-      let sum = 0, count = 0;
-      for (let dy = -radius; dy <= radius; dy += 2) {
-        for (let dx = -radius; dx <= radius; dx += 2) {
-          sum += gray[(y + dy) * width + (x + dx)];
-          count++;
-        }
-      }
-      const index = y * width + x;
-      if (gray[index] < (sum / count) - 22) mask[index] = 1;
+  // Integral image gives a stable local brightness estimate at multiple image sizes.
+  const stride = width + 1;
+  const integral = new Float64Array((width + 1) * (height + 1));
+  for (let y = 1; y <= height; y++) {
+    let rowSum = 0;
+    for (let x = 1; x <= width; x++) {
+      rowSum += gray[(y - 1) * width + (x - 1)];
+      integral[y * stride + x] = integral[(y - 1) * stride + x] + rowSum;
+    }
+  }
+  const radius = Math.max(5, Math.round(Math.min(width, height) * 0.018));
+  const mask = new Uint8Array(total);
+  for (let y = 0; y < height; y++) {
+    const y1 = Math.max(0, y - radius), y2 = Math.min(height, y + radius + 1);
+    for (let x = 0; x < width; x++) {
+      const x1 = Math.max(0, x - radius), x2 = Math.min(width, x + radius + 1);
+      const area = (x2 - x1) * (y2 - y1);
+      const sum = integral[y2 * stride + x2] - integral[y1 * stride + x2] - integral[y2 * stride + x1] + integral[y1 * stride + x1];
+      const localMean = sum / area;
+      const darkness = localMean - gray[y * width + x];
+      // Ignore bright texture; retain dark, locally contrasting crack pixels.
+      if (gray[y * width + x] < 150 && darkness > 20) mask[y * width + x] = 1;
     }
   }
 
-  // Group neighboring dark pixels into candidate regions.
-  const visited = new Uint8Array(width * height);
+  // A single 3x3 closing pass joins tiny gaps along a continuous crack without
+  // aggressively merging distant specks into giant circular regions.
+  const dilated = new Uint8Array(total);
+  for (let y = 1; y < height - 1; y++) for (let x = 1; x < width - 1; x++) {
+    let on = 0;
+    for (let dy = -1; dy <= 1 && !on; dy++) for (let dx = -1; dx <= 1; dx++) if (mask[(y + dy) * width + x + dx]) { on = 1; break; }
+    if (on) dilated[y * width + x] = 1;
+  }
+  const closed = new Uint8Array(total);
+  for (let y = 1; y < height - 1; y++) for (let x = 1; x < width - 1; x++) {
+    let all = 1;
+    for (let dy = -1; dy <= 1 && all; dy++) for (let dx = -1; dx <= 1; dx++) if (!dilated[(y + dy) * width + x + dx]) { all = 0; break; }
+    if (all) closed[y * width + x] = 1;
+  }
+
+  const visited = new Uint8Array(total);
   const components = [];
-  const minPixels = Math.max(7, Math.round(width * height * 0.000018));
-  const maxPixels = Math.round(width * height * 0.08);
-  for (let start = 0; start < mask.length; start++) {
-    if (!mask[start] || visited[start]) continue;
+  const minPixels = Math.max(10, Math.round(total * 0.000025));
+  for (let start = 0; start < total; start++) {
+    if (!closed[start] || visited[start]) continue;
     const stack = [start];
     visited[start] = 1;
     let count = 0, minX = width, minY = height, maxX = 0, maxY = 0;
     while (stack.length) {
-      const index = stack.pop();
-      const x = index % width, y = Math.floor(index / width);
+      const at = stack.pop();
+      const x = at % width, y = Math.floor(at / width);
       count++;
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (!dx && !dy) continue;
-          const nx = x + dx, ny = y + dy;
-          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-          const next = ny * width + nx;
-          if (mask[next] && !visited[next]) {
-            visited[next] = 1;
-            stack.push(next);
-          }
-        }
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+        const ni = ny * width + nx;
+        if (closed[ni] && !visited[ni]) { visited[ni] = 1; stack.push(ni); }
       }
     }
     const boxWidth = maxX - minX + 1, boxHeight = maxY - minY + 1;
-    const elongation = Math.max(boxWidth, boxHeight) / Math.max(1, Math.min(boxWidth, boxHeight));
-    if (count >= minPixels && count <= maxPixels && elongation >= 1.35) {
-      components.push({ minX, minY, maxX, maxY, count });
+    const longSide = Math.max(boxWidth, boxHeight);
+    const shortSide = Math.max(1, Math.min(boxWidth, boxHeight));
+    const elongation = longSide / shortSide;
+    // Keep both small, line-like cracks and large connected crack branches;
+    // reject isolated texture dots and broad shadow patches.
+    if (count >= minPixels && longSide >= Math.max(12, Math.round(Math.min(width, height) * 0.025)) &&
+        (elongation >= 1.7 || count >= total * 0.00035)) {
+      components.push({ minX, minY, maxX, maxY, count, boxWidth, boxHeight, longSide });
     }
   }
 
-  // Merge nearby candidate boxes so one irregular crack is less likely to be counted repeatedly.
+  // Merge only boxes that overlap or nearly touch; do not merge by large radius.
   const merged = [];
-  for (const component of components.sort((a, b) => b.count - a.count)) {
-    const cx = (component.minX + component.maxX) / 2;
-    const cy = (component.minY + component.maxY) / 2;
-    const nearby = merged.find((item) => {
-      const mx = (item.minX + item.maxX) / 2, my = (item.minY + item.maxY) / 2;
-      const reach = Math.max(item.maxX - item.minX, item.maxY - item.minY, component.maxX - component.minX, component.maxY - component.minY, 18);
-      return Math.hypot(cx - mx, cy - my) < reach * 0.65;
-    });
-    if (nearby) {
-      nearby.minX = Math.min(nearby.minX, component.minX);
-      nearby.minY = Math.min(nearby.minY, component.minY);
-      nearby.maxX = Math.max(nearby.maxX, component.maxX);
-      nearby.maxY = Math.max(nearby.maxY, component.maxY);
-    } else merged.push({ ...component });
+  for (const item of components.sort((a, b) => b.count - a.count)) {
+    let target = merged.find((m) =>
+      item.minX <= m.maxX + 5 && item.maxX >= m.minX - 5 &&
+      item.minY <= m.maxY + 5 && item.maxY >= m.minY - 5
+    );
+    if (target) {
+      target.minX = Math.min(target.minX, item.minX); target.minY = Math.min(target.minY, item.minY);
+      target.maxX = Math.max(target.maxX, item.maxX); target.maxY = Math.max(target.maxY, item.maxY);
+      target.count += item.count;
+    } else merged.push({ ...item });
   }
 
-  ctx.lineWidth = Math.max(2, width / 300);
-  ctx.strokeStyle = "#ff3434";
-  ctx.fillStyle = "rgba(255, 35, 35, 0.08)";
-  merged.forEach((region) => {
-    const cx = (region.minX + region.maxX) / 2;
-    const cy = (region.minY + region.maxY) / 2;
-    const radius = Math.max(13, Math.hypot(region.maxX - region.minX, region.maxY - region.minY) / 2 + 9);
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+  // Tight rectangular outlines follow each candidate's actual footprint.
+  ctx.lineWidth = Math.max(2, width / 420);
+  ctx.strokeStyle = "#ff3d3d";
+  ctx.fillStyle = "rgba(255, 45, 45, 0.07)";
+  merged.forEach((region, i) => {
+    const pad = Math.max(4, Math.round(Math.min(width, height) * 0.008));
+    const x = Math.max(0, region.minX - pad), y = Math.max(0, region.minY - pad);
+    const w = Math.min(width - x, region.maxX - region.minX + 1 + pad * 2);
+    const h = Math.min(height - y, region.maxY - region.minY + 1 + pad * 2);
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = "#ff3d3d";
+    ctx.font = "bold 12px sans-serif";
+    ctx.fillText("R" + (i + 1), x + 3, Math.max(13, y - 4));
+    ctx.fillStyle = "rgba(255, 45, 45, 0.07)";
   });
-  $("markingStatus").textContent = merged.length ? "REGIONS MARKED" : "NO REGIONS FOUND";
+
+  const crackPixels = merged.reduce((sum, r) => sum + r.count, 0);
+  const largestExtent = merged.reduce((max, r) => Math.max(max, r.longSide / Math.max(width, height)), 0);
+  const coverage = crackPixels / total;
+  $("markingStatus").textContent = merged.length ? "CRACK-LIKE REGIONS MARKED" : "NO REGIONS FOUND";
   $("crackCount").textContent = String(merged.length);
   $("crackCountText").textContent = merged.length
-    ? "Suspected crack-like regions marked in red. These are image-processing candidates, not a verified count of physical cracks."
-    : "No crack-like regions were identified by this preliminary image-processing pass. This does not guarantee the surface is crack-free.";
+    ? "Red outlines identify " + merged.length + " candidate regions. Larger connected regions are retained alongside smaller line-like candidates; these are not verified physical crack counts."
+    : "No clear crack-like regions were identified in this image-processing pass. This does not guarantee the surface is crack-free.";
   $("markingEmpty").classList.add("hidden");
+  return { count: merged.length, coverage, largestExtent, components: merged };
 }
-
 function clearCrackMarkings() {
   const canvas = $("markingCanvas");
   const ctx = canvas.getContext("2d");
@@ -327,17 +351,25 @@ analyzeButton.addEventListener("click", async () => {
     $("predictionIcon").textContent = bestIndex === modelData.cracked_class_index ? "⌁" : "✓";
     $("predictionDescription").textContent = "Predicted from the uploaded image using PCA-reduced pixel features and the trained neural network.";
     const isCracked = bestIndex === modelData.cracked_class_index;
+    const imageFindings = markSuspectedCracks(preview);
     $("guidanceStatus").textContent = "PRELIMINARY GUIDANCE";
-    // Prototype-only heuristic: this is deliberately separate from neural-network confidence.
-    // It is not trained or validated as a wall-quality metric.
-    const healthScore = isCracked ? 55 : 85;
+    // Explainable image-based concern index, not a trained or engineering-grade score.
+    // Penalize long connected regions and candidate coverage so major cracks matter more than speck count.
+    const visualPenalty = Math.min(78,
+      imageFindings.largestExtent * 58 +
+      imageFindings.coverage * 900 +
+      Math.min(imageFindings.count, 12) * 1.8 +
+      (isCracked ? 12 : 0)
+    );
+    const healthScore = Math.max(12, Math.min(96, Math.round(96 - visualPenalty)));
+    const concern = healthScore <= 45 ? "High visual concern" : healthScore <= 70 ? "Moderate visual concern" : healthScore <= 85 ? "Some visible concern" : "Few visual indicators";
     $("healthScore").innerHTML = healthScore + "<small>/100</small>";
-    $("healthGrade").textContent = isCracked ? "Needs inspection" : "No crack pattern detected";
+    $("healthGrade").textContent = concern;
     $("healthMeterFill").style.width = healthScore + "%";
-    $("healthMeterFill").classList.toggle("health-caution", isCracked);
-    $("healthSummary").textContent = isCracked
-      ? "A crack pattern was detected, so this prototype assigns a lower surface indicator. Crack severity and structural condition are not measured."
-      : "No crack pattern was detected, so this prototype shows a higher surface indicator. This is not proof of good wall health or safety.";
+    $("healthMeterFill").classList.toggle("health-caution", healthScore <= 70);
+    $("healthSummary").textContent = imageFindings.count
+      ? "The visual indicator is reduced by " + imageFindings.count + " suspected crack-like regions, their image coverage, and the largest connected region. It is not a measurement of structural safety."
+      : "No prominent crack-like regions were found by this preliminary image-processing pass. The indicator is not proof of good wall health or safety.";
     if (isCracked) {
       $("guidanceTitle").textContent = "Visible crack pattern suspected — inspection recommended";
       $("guidanceText").textContent = "The model classified this image as cracked. This result alone cannot tell whether plastering is enough or whether the wall needs structural repair or rebuilding. An on-site inspection is needed to check crack width, depth, location, movement, and the wall's role in the building.";
@@ -350,7 +382,6 @@ analyzeButton.addEventListener("click", async () => {
     $("ldaScore").textContent = Number(score).toFixed(3);
     $("imageState").textContent = "ANALYSIS COMPLETE";
     drawProjection(features, modelData.pca);
-    markSuspectedCracks(preview);
     $("resultsSection").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     console.error(error);

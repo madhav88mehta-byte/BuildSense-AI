@@ -357,15 +357,23 @@ analyzeButton.addEventListener("click", async () => {
     const features = projectPCA(preprocessImage(preview, modelData.image_size), modelData.pca);
     const probabilities = predictMLP(features, modelData.mlp);
     const bestIndex = probabilities.indexOf(Math.max(...probabilities));
-    const label = modelData.classes[bestIndex];
-    const confidence = probabilities[bestIndex] * 100;
+    const modelSaysCracked = bestIndex === modelData.cracked_class_index;
+    const neuralNetworkScore = probabilities[bestIndex] * 100;
     const score = ldaDecision(features, modelData.lda);
-    $("predictionLabel").textContent = label;
-    $("predictionStatus").textContent = "COMPLETE";
-    $("predictionIcon").textContent = bestIndex === modelData.cracked_class_index ? "⌁" : "✓";
-    $("predictionDescription").textContent = "Predicted from the uploaded image using PCA-reduced pixel features and the trained neural network.";
-    const isCracked = bestIndex === modelData.cracked_class_index;
+
+    // Run the independent image-processing detector before deciding the final
+    // crack-presence result. Either a positive MLP result OR visible crack-like
+    // paths is enough to flag the image, preventing a confident MLP false
+    // negative from hiding clear paths found by the visual detector.
     const imageFindings = markSuspectedCracks(preview);
+    const isCracked = modelSaysCracked || imageFindings.count > 0;
+
+    $("predictionLabel").textContent = isCracked ? "Cracks Detected" : "No Cracks Detected";
+    $("predictionStatus").textContent = "COMPLETE";
+    $("predictionIcon").textContent = isCracked ? "⌁" : "✓";
+    $("predictionDescription").textContent = isCracked
+      ? "Crack presence flagged by the combined image detector and neural-network analysis. Neural-network class: " + modelData.classes[bestIndex] + "."
+      : "Neither the image detector nor the neural network identified a crack pattern. This is an image-based result, not proof that the surface is crack-free.";
     $("guidanceStatus").textContent = "PRELIMINARY GUIDANCE";
     // Explainable image-based concern index, not a trained or engineering-grade score.
     // Penalize long connected regions and candidate coverage so major cracks matter more than speck count.
@@ -391,8 +399,10 @@ analyzeButton.addEventListener("click", async () => {
       $("guidanceTitle").textContent = "No crack pattern detected by the model";
       $("guidanceText").textContent = "The model classified this image as non-cracked. This does not certify that the wall is safe: hidden defects, small cracks, poor image quality, or surfaces unlike the training images may be missed. Inspect the wall if there are visible warning signs or concerns.";
     }
-    $("confidenceValue").textContent = confidence.toFixed(1) + "%";
-    $("confidenceBar").style.width = confidence.toFixed(1) + "%";
+    // This percentage is the neural network's own class score, not a calibrated
+    // confidence for the combined crack-detection decision.
+    $("confidenceValue").textContent = neuralNetworkScore.toFixed(1) + "%";
+    $("confidenceBar").style.width = neuralNetworkScore.toFixed(1) + "%";
     $("ldaScore").textContent = Number(score).toFixed(3);
     $("imageState").textContent = "ANALYSIS COMPLETE";
     drawProjection(features, modelData.pca);

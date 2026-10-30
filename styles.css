@@ -108,3 +108,67 @@ body{background:radial-gradient(ellipse at 12% 0%,#e3eee2 0,transparent 38%),lin
 .marking-disclaimer{color:#896d3d}
 footer{color:#718174}
 @media(max-width:800px){.scan-frame{box-shadow:0 12px 35px #395a3b18}}
+
+
+/* Concrete-inspired cool grey theme */
+:root{
+ --bg:#e8e9e6;--panel:#f7f7f5;--panel2:#e1e3df;--line:#c9ceca;
+ --muted:#68716d;--text:#252d2a;--accent:#477b54;--accent2:#356744;
+}
+body{
+ background:
+  radial-gradient(ellipse at 14% 0%,#f5f6f3 0,transparent 42%),
+  linear-gradient(135deg,#e5e7e4 0%,#d9ddda 54%,#ecece8 100%);
+ color:var(--text)
+}
+.topbar,.hero,.workspace,.results-section,.method-section,.crack-marking-section{border-color:var(--line)}
+.brand{color:#26332c}
+.topbar-right,.version,.art-caption{color:#68736d}
+.version{border-color:#c9ceca}
+.hero-description,.prediction-description,.method-card p,.repair-guidance>p,
+.guidance-grid p,.marking-summary p,.marking-disclaimer{color:#5d6862}
+.hero-tags span{border-color:#cbd1cc;color:#52615a;background:#ffffffa8}
+.scan-frame{background:linear-gradient(135deg,#c7cbc7,#aeb5b0 50%,#929c95);border-color:#aeb7b0;box-shadow:0 18px 55px #27342d20}
+.scan-grid{background-image:linear-gradient(#ffffff55 1px,transparent 1px),linear-gradient(90deg,#ffffff55 1px,transparent 1px)}
+.crack-line{background:#303a34}
+.scan-label,.scan-coordinate{color:#f7faf6;background:#26352dc9}
+.upload-panel,.preview-panel,.prediction-card,.pca-card,.method-card,.repair-guidance,.marking-panel{
+ background:#f8f9f7;border-color:#c9ceca;box-shadow:0 8px 26px #26342d0c
+}
+.dropzone{background:linear-gradient(145deg,#f5f6f4,#e9ece8);border-color:#b8c1ba}
+.dropzone:hover,.dropzone.dragging{background:#e5ebe5;border-color:var(--accent)}
+.dropzone>span,.dropzone small,.upload-foot,.button-note{color:#68736d}
+.preview-stage,.marking-canvas-wrap{background:#e5e8e4;border-color:#cbd1cc}
+.empty-preview{color:#77827b}
+.empty-cross{color:#9aa49d}
+.preview-meta,.panel-topline,.prediction-label,.confidence-row,.pca-stats span,.method-number{color:#68736d}
+.primary-button{background:#477b54;color:#fff}
+.primary-button:hover:not(:disabled){background:#356744}
+.reset-button{border-color:#bdc6bf;background:#f7f8f6;color:#35483c}
+.reset-button:hover:not(:disabled){border-color:var(--accent);color:#356744;background:#edf2ed}
+.prediction-icon{border-color:#c2cec4;color:var(--accent)}
+.prediction-main h3,.pca-stats strong,.method-card h3,.repair-guidance h3{color:#26332c}
+.confidence-track,.health-meter{background:#dce1dc}
+.pca-plot{background-color:#f1f3f0;background-image:linear-gradient(#7d8c811f 1px,transparent 1px),linear-gradient(90deg,#7d8c811f 1px,transparent 1px)}
+.plot-axis-x,.plot-axis-y{background:#9aa49d}
+.plot-placeholder,.axis-label{color:#68736d}
+.pca-stats,.marking-summary{border-color:var(--line)}
+.method-foot span{color:#52615a;border-color:#d0d6d1;background:#f2f4f1}
+.model-notice{background:#edf1ec;border-color:#c7d2c7}
+.model-notice p{color:#5d6862}
+.health-summary{background:#eef1ed;border-color:#cbd3cb}
+.health-score-label{color:#68736d}
+.health-score>strong{color:#477b54}
+.health-grade{color:#43564a}
+.health-meter span{background:#477b54}
+.health-meter span.health-caution{background:#c18b3d}
+.health-meter-wrap p{color:#52615a}
+.health-meter-wrap>small{color:#98713b}
+.guidance-grid>div{background:#eef1ed;border-color:var(--line)}
+.guidance-grid strong{color:#477b54}
+.repair-guidance .guidance-warning{border-color:var(--line);color:#89672f}
+.marking-empty{color:#68736d}
+.marking-summary strong{color:#d94b4b}
+.marking-disclaimer{color:#896d3d}
+footer{color:#68736d}
+@media(max-width:800px){.scan-frame{box-shadow:0 12px 35px #27342d18}}

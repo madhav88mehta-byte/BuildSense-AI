@@ -45,3 +45,66 @@
 .marking-summary p,.marking-disclaimer{font-size:10px;line-height:1.7;color:#aab6aa;margin:0}
 .marking-disclaimer{color:#d2b98f;margin-top:13px}
 @media(max-width:520px){.marking-panel{padding:14px}.marking-summary{align-items:flex-start;gap:12px;flex-direction:column}}
+
+
+/* Warm architectural light theme */
+:root{
+ --bg:#f3f5ef;--panel:#ffffff;--panel2:#e9efe7;--line:#d8e1d6;
+ --muted:#647568;--text:#1c3027;--accent:#477b54;--accent2:#356744;
+}
+body{background:radial-gradient(ellipse at 12% 0%,#e3eee2 0,transparent 38%),linear-gradient(135deg,#f7f8f3,#edf2eb 58%,#f5f3eb);color:var(--text)}
+.topbar{border-color:var(--line)}
+.brand{color:#20372b}
+.topbar-right{color:#647568}
+.version{border-color:var(--line);color:#647568}
+.hero{border-color:var(--line)}
+.hero-description{color:#5e7063}
+.hero-tags span{border-color:#d5dfd4;color:#526657;background:#ffffff80}
+.scan-frame{background:linear-gradient(135deg,#d8e3d5,#b9cbb9 48%,#91aa96);border-color:#9eb49f;box-shadow:0 18px 55px #395a3b20}
+.scan-grid{background-image:linear-gradient(#ffffff55 1px,transparent 1px),linear-gradient(90deg,#ffffff55 1px,transparent 1px)}
+.crack-line{background:#34483a}
+.scan-label,.scan-coordinate{color:#f6fbf3;background:#284332c9}
+.art-caption{color:#657769}
+.workspace,.results-section,.method-section,.crack-marking-section{border-color:var(--line)}
+.upload-panel,.preview-panel,.prediction-card,.pca-card,.method-card,.repair-guidance,.marking-panel{background:#ffffffd9;border-color:var(--line);box-shadow:0 8px 26px #29452f0a}
+.dropzone{background:linear-gradient(145deg,#f7faf5,#edf4eb);border-color:#b7cbb7}
+.dropzone:hover,.dropzone.dragging{background:#e8f2e6;border-color:var(--accent)}
+.dropzone>span{color:#647568}
+.dropzone small,.upload-foot,.button-note{color:#718174}
+.preview-stage,.marking-canvas-wrap{background:#edf2eb;border-color:#d8e1d6}
+.empty-preview{color:#738476}
+.empty-cross{color:#9aab9a}
+.preview-meta{color:#657568}
+.primary-button{background:#477b54;color:#fff}
+.primary-button:hover:not(:disabled){background:#356744}
+.reset-button{border-color:#bdcdbd;background:#f8faf6;color:#35513c}
+.reset-button:hover:not(:disabled){border-color:var(--accent);color:#356744;background:#edf5eb}
+.panel-topline,.prediction-label,.confidence-row,.pca-stats span,.method-number{color:#66786a}
+.prediction-description,.method-card p,.repair-guidance>p,.guidance-grid p,.marking-summary p,.marking-disclaimer{color:#5e7063}
+.prediction-icon{border-color:#c6d7c5;color:var(--accent)}
+.prediction-main h3,.pca-stats strong,.method-card h3,.repair-guidance h3{color:#21382b}
+.confidence-track,.health-meter{background:#e0e8dd}
+.pca-plot{background-color:#f5f8f2;background-image:linear-gradient(#7d997d20 1px,transparent 1px),linear-gradient(90deg,#7d997d20 1px,transparent 1px)}
+.plot-axis-x,.plot-axis-y{background:#9aab9a}
+.plot-placeholder,.axis-label{color:#657568}
+.pca-stats{border-color:var(--line)}
+.method-foot span{color:#526657;border-color:#d5dfd4;background:#f7faf5}
+.model-notice{background:#edf4e9;border-color:#c8d9c2}
+.model-notice p{color:#5e7063}
+.health-summary{background:#f2f6ef;border-color:#d2dfce}
+.health-score-label{color:#66786a}
+.health-score>strong{color:#477b54}
+.health-grade{color:#425a47}
+.health-meter span{background:#477b54}
+.health-meter span.health-caution{background:#c18b3d}
+.health-meter-wrap p{color:#526657}
+.health-meter-wrap>small{color:#98713b}
+.guidance-grid>div{background:#f3f7f0;border-color:var(--line)}
+.guidance-grid strong{color:#477b54}
+.repair-guidance .guidance-warning{border-color:var(--line);color:#89672f}
+.marking-empty{color:#718174}
+.marking-summary{border-color:var(--line)}
+.marking-summary strong{color:#d94b4b}
+.marking-disclaimer{color:#896d3d}
+footer{color:#718174}
+@media(max-width:800px){.scan-frame{box-shadow:0 12px 35px #395a3b18}}

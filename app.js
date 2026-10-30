@@ -148,8 +148,8 @@ function lanczosKernel(x) {
   const pix = Math.PI * x;
   return (Math.sin(pix) / pix) * (Math.sin(pix / 3) / (pix / 3));
 }
-function resizeLanczos1D(source, sourceLength, targetLength, stride, offset) {
-  const output = new Float32Array(targetLength * stride);
+function resizeLanczos1D(source, sourceLength, targetLength, sourceStride, sourceOffset) {
+  const output = new Float32Array(targetLength);
   const scale = sourceLength / targetLength;
   const filterScale = Math.max(1, scale);
   const support = 3 * filterScale;
@@ -158,19 +158,13 @@ function resizeLanczos1D(source, sourceLength, targetLength, stride, offset) {
     const first = Math.max(0, Math.ceil(center - support - 0.5));
     const last = Math.min(sourceLength - 1, Math.floor(center + support - 0.5));
     let weightSum = 0;
-    const weights = [];
+    let value = 0;
     for (let sample = first; sample <= last; sample++) {
       const weight = lanczosKernel((sample + 0.5 - center) / filterScale);
-      weights.push([sample, weight]);
+      value += source[sourceOffset + sample * sourceStride] * weight;
       weightSum += weight;
     }
-    for (let channel = 0; channel < stride; channel++) {
-      let value = 0;
-      for (const [sample, weight] of weights) {
-        value += source[offset + sample * stride + channel] * weight;
-      }
-      output[target * stride + channel] = weightSum ? value / weightSum : 0;
-    }
+    output[target] = weightSum ? value / weightSum : 0;
   }
   return output;
 }
@@ -198,7 +192,7 @@ function preprocessImage(image, size) {
   const resized = new Float32Array(size * size);
   for (let x = 0; x < size; x++) {
     const column = resizeLanczos1D(horizontal, sourceHeight, size, size, x);
-    for (let y = 0; y < size; y++) resized[y * size + x] = column[y * size];
+    for (let y = 0; y < size; y++) resized[y * size + x] = column[y];
   }
   const vector = new Array(size * size);
   for (let i = 0; i < vector.length; i++) {

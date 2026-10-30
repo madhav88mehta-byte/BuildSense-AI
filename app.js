@@ -187,11 +187,22 @@ function preprocessImage(image, size) {
     grayscale[p] = Math.round(0.299 * rgba[i] + 0.587 * rgba[i + 1] + 0.114 * rgba[i + 2]);
   }
 
-  const horizontal = resizeLanczos1D(grayscale, image.naturalWidth, size, 1, 0);
-  const vertical = resizeLanczos1D(horizontal, image.naturalHeight, size, 1, 0);
+  // Resize each row first, then each column (separable 2-D Lanczos).
+  const sourceWidth = image.naturalWidth;
+  const sourceHeight = image.naturalHeight;
+  const horizontal = new Float32Array(sourceHeight * size);
+  for (let y = 0; y < sourceHeight; y++) {
+    const row = resizeLanczos1D(grayscale, sourceWidth, size, 1, y * sourceWidth);
+    horizontal.set(row, y * size);
+  }
+  const resized = new Float32Array(size * size);
+  for (let x = 0; x < size; x++) {
+    const column = resizeLanczos1D(horizontal, sourceHeight, size, size, x);
+    for (let y = 0; y < size; y++) resized[y * size + x] = column[y * size];
+  }
   const vector = new Array(size * size);
   for (let i = 0; i < vector.length; i++) {
-    vector[i] = Math.max(0, Math.min(255, Math.round(vertical[i]))) / 255;
+    vector[i] = Math.max(0, Math.min(255, Math.round(resized[i]))) / 255;
   }
   return vector;
 }

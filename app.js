@@ -410,21 +410,19 @@ analyzeButton.addEventListener("click", async () => {
     const neuralNetworkScore = probabilities[bestIndex] * 100;
     const score = ldaDecision(features, modelData.lda);
 
-    // Run the independent image-processing detector before deciding the final
-    // crack-presence result. Either a positive MLP result OR visible crack-like
-    // paths is enough to flag the image, preventing a confident MLP false
-    // negative from hiding clear paths found by the visual detector.
+    // Combine two independent signals for the headline result:
+    // the trained neural network prediction and the visual crack-like-region detector.
+    // Either positive signal flags the image; LDA remains a separate diagnostic below.
     const imageFindings = markSuspectedCracks(preview);
-    // The crack-region detector is the source of truth for the visible crack status.
-    // The neural-network prediction remains a separate supporting diagnostic.
-    const isCracked = imageFindings.count > 0;
+    const visualDetectorSaysCracked = imageFindings.count > 0;
+    const isCracked = modelSaysCracked || visualDetectorSaysCracked;
 
     $("predictionLabel").textContent = isCracked ? "Cracks Detected" : "No Cracks Detected";
     $("predictionStatus").textContent = "COMPLETE";
     $("predictionIcon").textContent = isCracked ? "⌁" : "✓";
     $("predictionDescription").textContent = isCracked
-      ? "Crack presence flagged by the combined image detector and neural-network analysis. Neural-network class: " + modelData.classes[bestIndex] + "."
-      : "Neither the image detector nor the neural network identified a crack pattern. This is an image-based result, not proof that the surface is crack-free.";
+      ? "Crack presence flagged by " + [modelSaysCracked ? "the neural network" : "", visualDetectorSaysCracked ? "the visual detector" : ""].filter(Boolean).join(" and ") + ". Neural-network class: " + modelData.classes[bestIndex] + ". LDA is shown separately as a diagnostic."
+      : "Neither the neural network nor the visual detector identified a crack pattern. This image-based result is not proof that the surface is crack-free.";
     $("guidanceStatus").textContent = "PRELIMINARY GUIDANCE";
     // Explainable image-based concern index, not a trained or engineering-grade score.
     // Penalize long connected regions and candidate coverage so major cracks matter more than speck count.
@@ -445,7 +443,7 @@ analyzeButton.addEventListener("click", async () => {
       : "No prominent crack-like regions were found by this preliminary image-processing pass. The indicator is not proof of good wall health or safety.";
     if (isCracked) {
       $("guidanceTitle").textContent = "Visible crack pattern suspected — inspection recommended";
-      $("guidanceText").textContent = "The model classified this image as cracked. This result alone cannot tell whether plastering is enough or whether the wall needs structural repair or rebuilding. An on-site inspection is needed to check crack width, depth, location, movement, and the wall's role in the building.";
+      $("guidanceText").textContent = "The neural network and/or visual detector flagged a crack-like pattern. LDA may disagree and is displayed separately. This image result cannot determine whether plastering is enough or whether structural repair is needed. An on-site inspection is needed to check crack width, depth, location, movement, and the wall's role in the building.";
     } else {
       $("guidanceTitle").textContent = "No crack pattern detected by the model";
       $("guidanceText").textContent = "The model classified this image as non-cracked. This does not certify that the wall is safe: hidden defects, small cracks, poor image quality, or surfaces unlike the training images may be missed. Inspect the wall if there are visible warning signs or concerns.";

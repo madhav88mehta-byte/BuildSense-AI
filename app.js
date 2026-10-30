@@ -366,7 +366,9 @@ analyzeButton.addEventListener("click", async () => {
     // paths is enough to flag the image, preventing a confident MLP false
     // negative from hiding clear paths found by the visual detector.
     const imageFindings = markSuspectedCracks(preview);
-    const isCracked = modelSaysCracked || imageFindings.count > 0;
+    // The crack-region detector is the source of truth for the visible crack status.
+    // The neural-network prediction remains a separate supporting diagnostic.
+    const isCracked = imageFindings.count > 0;
 
     $("predictionLabel").textContent = isCracked ? "Cracks Detected" : "No Cracks Detected";
     $("predictionStatus").textContent = "COMPLETE";

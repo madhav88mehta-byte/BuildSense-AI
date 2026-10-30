@@ -58,7 +58,7 @@ async function loadModel() {
     const response = await fetch("/model.json", { cache: "no-store" });
     if (!response.ok) throw new Error("No trained model file");
     modelData = await response.json();
-    if (!modelData || !modelData.pca || !modelData.mlp) throw new Error("Model file is incomplete");
+    if (!modelData || !modelData.pca || !modelData.lda || !modelData.mlp) throw new Error("Model file is incomplete");
     $("modelStatus").textContent = "Trained model loaded · image analysis is ready.";
     $("modelNotice").classList.add("hidden");
     analyzeButton.disabled = !selectedFile;
@@ -138,16 +138,60 @@ function predictMLP(features, mlp) {
   }
   return softmax(current);
 }
+// Match the Python training pipeline: grayscale first, then Lanczos-3 resize,
+// then scale byte intensities to [0, 1]. Canvas' default drawImage filter is
+// browser-dependent and does not match PIL's Lanczos resampling.
+function lanczosKernel(x) {
+  x = Math.abs(x);
+  if (x < 1e-8) return 1;
+  if (x >= 3) return 0;
+  const pix = Math.PI * x;
+  return (Math.sin(pix) / pix) * (Math.sin(pix / 3) / (pix / 3));
+}
+function resizeLanczos1D(source, sourceLength, targetLength, stride, offset) {
+  const output = new Float32Array(targetLength * stride);
+  const scale = sourceLength / targetLength;
+  const filterScale = Math.max(1, scale);
+  const support = 3 * filterScale;
+  for (let target = 0; target < targetLength; target++) {
+    const center = (target + 0.5) * scale;
+    const first = Math.max(0, Math.ceil(center - support - 0.5));
+    const last = Math.min(sourceLength - 1, Math.floor(center + support - 0.5));
+    let weightSum = 0;
+    const weights = [];
+    for (let sample = first; sample <= last; sample++) {
+      const weight = lanczosKernel((sample + 0.5 - center) / filterScale);
+      weights.push([sample, weight]);
+      weightSum += weight;
+    }
+    for (let channel = 0; channel < stride; channel++) {
+      let value = 0;
+      for (const [sample, weight] of weights) {
+        value += source[offset + sample * stride + channel] * weight;
+      }
+      output[target * stride + channel] = weightSum ? value / weightSum : 0;
+    }
+  }
+  return output;
+}
 function preprocessImage(image, size) {
-  const canvas = document.createElement("canvas");
-  canvas.width = size; canvas.height = size;
-  const context = canvas.getContext("2d", { willReadFrequently: true });
-  context.drawImage(image, 0, 0, size, size);
-  const rgba = context.getImageData(0, 0, size, size).data;
-  const vector = new Array(size * size);
+  const sourceCanvas = document.createElement("canvas");
+  sourceCanvas.width = image.naturalWidth;
+  sourceCanvas.height = image.naturalHeight;
+  const sourceContext = sourceCanvas.getContext("2d", { willReadFrequently: true });
+  sourceContext.drawImage(image, 0, 0);
+  const rgba = sourceContext.getImageData(0, 0, image.naturalWidth, image.naturalHeight).data;
+  const grayscale = new Float32Array(image.naturalWidth * image.naturalHeight);
   for (let i = 0, p = 0; i < rgba.length; i += 4, p++) {
-    const gray = 0.299 * rgba[i] + 0.587 * rgba[i + 1] + 0.114 * rgba[i + 2];
-    vector[p] = gray / 255;
+    // PIL Image.convert("L") uses the same standard luma weighting.
+    grayscale[p] = Math.round(0.299 * rgba[i] + 0.587 * rgba[i + 1] + 0.114 * rgba[i + 2]);
+  }
+
+  const horizontal = resizeLanczos1D(grayscale, image.naturalWidth, size, 1, 0);
+  const vertical = resizeLanczos1D(horizontal, image.naturalHeight, size, 1, 0);
+  const vector = new Array(size * size);
+  for (let i = 0; i < vector.length; i++) {
+    vector[i] = Math.max(0, Math.min(255, Math.round(vertical[i]))) / 255;
   }
   return vector;
 }
@@ -405,7 +449,12 @@ analyzeButton.addEventListener("click", async () => {
     // confidence for the combined crack-detection decision.
     $("confidenceValue").textContent = neuralNetworkScore.toFixed(1) + "%";
     $("confidenceBar").style.width = neuralNetworkScore.toFixed(1) + "%";
-    $("ldaScore").textContent = Number(score).toFixed(3);
+    // sklearn's binary LDA decision_function is positive for classes[1]
+    // and negative for classes[0]. Keep the raw score visible, but label it.
+    const ldaClasses = modelData.lda.classes || modelData.classes;
+    const ldaClassIndex = score >= 0 ? 1 : 0;
+    const ldaClassName = ldaClasses[ldaClassIndex] || "Unknown class";
+    $("ldaScore").textContent = Number(score).toFixed(3) + " · " + ldaClassName;
     $("imageState").textContent = "ANALYSIS COMPLETE";
     drawProjection(features, modelData.pca);
     $("resultsSection").scrollIntoView({ behavior: "smooth", block: "start" });

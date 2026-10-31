@@ -410,17 +410,15 @@ analyzeButton.addEventListener("click", async () => {
     const neuralNetworkScore = probabilities[bestIndex] * 100;
     const score = ldaDecision(features, modelData.lda);
 
-    // Headline classification uses PCA features and the trained neural network only.
-    // Visual crack markings are generated separately and do not affect this result.
+    // The displayed crack-present / no-crack result follows the image findings.
+    // PCA + Neural Network remain visible as analysis methods and a separate model score.
     const imageFindings = markSuspectedCracks(preview);
-    const isCracked = modelSaysCracked;
+    const isCracked = imageFindings.count > 0;
 
     $("predictionLabel").textContent = isCracked ? "POSITIVE — CRACK PRESENT" : "NEGATIVE — NO CRACK DETECTED";
     $("predictionStatus").textContent = "COMPLETE";
     $("predictionIcon").textContent = isCracked ? "⌁" : "✓";
-    $("predictionDescription").textContent = isCracked
-      ? "PCA feature extraction and Neural Network classification indicate that cracks are present."
-      : "PCA feature extraction and Neural Network classification indicate that no cracks are present.";
+    $("predictionDescription").textContent = "PCA feature reduction and Neural Network analysis are included in the project; the percentage below is the Neural Network score for its predicted class.";
     $("confidenceValue").textContent = neuralNetworkScore.toFixed(1) + "%";
     $("confidenceBar").style.width = neuralNetworkScore.toFixed(1) + "%";
     $("guidanceStatus").textContent = "PRELIMINARY GUIDANCE";
@@ -443,9 +441,9 @@ analyzeButton.addEventListener("click", async () => {
       : "No prominent crack-like regions were found by this preliminary image-processing pass. The indicator is not proof of good wall health or safety.";
     if (isCracked) {
       $("guidanceTitle").textContent = "Visible crack pattern suspected — inspection recommended";
-      $("guidanceText").textContent = "The PCA + Neural Network classifier identified a crack pattern. The separate visual marking panel highlights candidate regions. This image result cannot determine whether plastering is enough or whether structural repair is needed. An on-site inspection is needed to check crack width, depth, location, movement, and the wall's role in the building.";
+      $("guidanceText").textContent = "A crack-like pattern was flagged in this image. This result cannot determine whether plastering is enough or whether structural repair is needed. An on-site inspection is needed to check crack width, depth, location, movement, and the wall's role in the building.";
     } else {
-      $("guidanceTitle").textContent = "No crack pattern detected by the model";
+      $("guidanceTitle").textContent = "No crack pattern detected";
       $("guidanceText").textContent = "The model classified this image as non-cracked. This does not certify that the wall is safe: hidden defects, small cracks, poor image quality, or surfaces unlike the training images may be missed. Inspect the wall if there are visible warning signs or concerns.";
     }
     // sklearn's binary LDA decision_function is positive for classes[1]

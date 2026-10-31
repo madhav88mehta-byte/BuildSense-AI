@@ -68,10 +68,12 @@
         <div class="section-heading"><div><p class="eyebrow">02 — MODEL OUTPUT</p><h2>Classification report</h2></div><span class="step-count">STEP 02 <span>/ 03</span></span></div>
         <div class="results-grid">
           <div class="prediction-card">
-            <div class="panel-topline"><span>COMBINED DETECTION RESULT</span><span class="result-status" id="predictionStatus">NO RESULT</span></div>
+            <div class="panel-topline"><span>PCA + NEURAL NETWORK RESULT</span><span class="result-status" id="predictionStatus">NO RESULT</span></div>
             <div class="prediction-main"><div class="prediction-icon" id="predictionIcon">⌁</div><div><p class="prediction-label">PREDICTED CLASS</p><h3 id="predictionLabel">Awaiting image</h3></div></div>
-            <p class="prediction-description" id="predictionDescription">PCA extracts important image features, and a neural network classifies them. Visual crack-pattern analysis also contributes to the combined result.</p>
-            <p class="disclaimer">Experimental image classification only. Not a structural safety assessment.</p>
+            <p class="prediction-description" id="predictionDescription">PCA extracts image features, and the neural network classifies the image.</p>
+            <div class="confidence-row"><span>NEURAL-NETWORK SCORE FOR ITS PREDICTED CLASS</span><strong id="confidenceValue">—</strong></div>
+            <div class="confidence-track"><span id="confidenceBar"></span></div>
+            <p class="disclaimer">The percentage is the neural network's score for its predicted class, not a calibrated confidence for the entire system. Experimental image classification only; not a structural safety assessment.</p>
           </div>
           <div class="pca-card">
             <div class="panel-topline"><span>PCA FEATURE SPACE</span><span id="pcaStatus">WAITING</span></div>

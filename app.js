@@ -26,9 +26,7 @@ function resetPhoto() {
   $("predictionLabel").textContent = "Awaiting image";
   $("predictionStatus").textContent = "NO RESULT";
   $("predictionIcon").textContent = "⌁";
-  $("predictionDescription").textContent = "The combined result and the neural-network prediction will appear here after analysis.";
-  $("confidenceValue").textContent = "—";
-  $("confidenceBar").style.width = "0%";
+  $("predictionDescription").textContent = "PCA extracts important image features, and a neural network classifies them. Visual crack-pattern analysis also contributes to the combined result.";
   $("ldaScore").textContent = "—";
 
   $("pcaStatus").textContent = "WAITING";
@@ -407,7 +405,6 @@ analyzeButton.addEventListener("click", async () => {
     const probabilities = predictMLP(features, modelData.mlp);
     const bestIndex = probabilities.indexOf(Math.max(...probabilities));
     const modelSaysCracked = bestIndex === modelData.cracked_class_index;
-    const neuralNetworkScore = probabilities[bestIndex] * 100;
     const score = ldaDecision(features, modelData.lda);
 
     // Combine two independent signals for the headline result:
@@ -417,12 +414,10 @@ analyzeButton.addEventListener("click", async () => {
     const visualDetectorSaysCracked = imageFindings.count > 0;
     const isCracked = modelSaysCracked || visualDetectorSaysCracked;
 
-    $("predictionLabel").textContent = isCracked ? "Cracks Detected" : "No Cracks Detected";
+    $("predictionLabel").textContent = isCracked ? "POSITIVE — CRACK PRESENT" : "NEGATIVE — NO CRACK DETECTED";
     $("predictionStatus").textContent = "COMPLETE";
     $("predictionIcon").textContent = isCracked ? "⌁" : "✓";
-    $("predictionDescription").textContent = isCracked
-      ? "Combined system result: Positive — crack presence flagged by " + [modelSaysCracked ? "the neural network" : "", visualDetectorSaysCracked ? "the visual detector" : ""].filter(Boolean).join(" and ") + ". Actual neural-network prediction: " + modelData.classes[bestIndex] + " (" + neuralNetworkScore.toFixed(1) + "% score for that predicted class). LDA is shown separately as a diagnostic."
-      : "Combined system result: Negative — neither the neural network nor the visual detector identified a crack pattern. Actual neural-network prediction: " + modelData.classes[bestIndex] + " (" + neuralNetworkScore.toFixed(1) + "% score for that predicted class). This image-based result is not proof that the surface is crack-free.";
+    $("predictionDescription").textContent = "PCA extracts important image features, and a neural network classifies them. Visual crack-pattern analysis also contributes to the combined result.";
     $("guidanceStatus").textContent = "PRELIMINARY GUIDANCE";
     // Explainable image-based concern index, not a trained or engineering-grade score.
     // Penalize long connected regions and candidate coverage so major cracks matter more than speck count.
@@ -448,10 +443,6 @@ analyzeButton.addEventListener("click", async () => {
       $("guidanceTitle").textContent = "No crack pattern detected by the model";
       $("guidanceText").textContent = "The model classified this image as non-cracked. This does not certify that the wall is safe: hidden defects, small cracks, poor image quality, or surfaces unlike the training images may be missed. Inspect the wall if there are visible warning signs or concerns.";
     }
-    // This percentage is the neural network's own class score, not a calibrated
-    // confidence for the combined crack-detection decision.
-    $("confidenceValue").textContent = neuralNetworkScore.toFixed(1) + "%";
-    $("confidenceBar").style.width = neuralNetworkScore.toFixed(1) + "%";
     // sklearn's binary LDA decision_function is positive for classes[1]
     // and negative for classes[0]. Keep the raw score visible, but label it.
     const ldaClasses = modelData.lda.classes || modelData.classes;

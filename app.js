@@ -26,7 +26,7 @@ function resetPhoto() {
   $("predictionLabel").textContent = "Awaiting image";
   $("predictionStatus").textContent = "NO RESULT";
   $("predictionIcon").textContent = "⌁";
-  $("predictionDescription").textContent = "Choose a concrete image and run the trained model to see its output.";
+  $("predictionDescription").textContent = "The combined result and the neural-network prediction will appear here after analysis.";
   $("confidenceValue").textContent = "—";
   $("confidenceBar").style.width = "0%";
   $("ldaScore").textContent = "—";
@@ -421,8 +421,8 @@ analyzeButton.addEventListener("click", async () => {
     $("predictionStatus").textContent = "COMPLETE";
     $("predictionIcon").textContent = isCracked ? "⌁" : "✓";
     $("predictionDescription").textContent = isCracked
-      ? "Crack presence flagged by " + [modelSaysCracked ? "the neural network" : "", visualDetectorSaysCracked ? "the visual detector" : ""].filter(Boolean).join(" and ") + ". Neural-network class: " + modelData.classes[bestIndex] + ". LDA is shown separately as a diagnostic."
-      : "Neither the neural network nor the visual detector identified a crack pattern. This image-based result is not proof that the surface is crack-free.";
+      ? "Combined system result: Positive — crack presence flagged by " + [modelSaysCracked ? "the neural network" : "", visualDetectorSaysCracked ? "the visual detector" : ""].filter(Boolean).join(" and ") + ". Actual neural-network prediction: " + modelData.classes[bestIndex] + " (" + neuralNetworkScore.toFixed(1) + "% score for that predicted class). LDA is shown separately as a diagnostic."
+      : "Combined system result: Negative — neither the neural network nor the visual detector identified a crack pattern. Actual neural-network prediction: " + modelData.classes[bestIndex] + " (" + neuralNetworkScore.toFixed(1) + "% score for that predicted class). This image-based result is not proof that the surface is crack-free.";
     $("guidanceStatus").textContent = "PRELIMINARY GUIDANCE";
     // Explainable image-based concern index, not a trained or engineering-grade score.
     // Penalize long connected regions and candidate coverage so major cracks matter more than speck count.

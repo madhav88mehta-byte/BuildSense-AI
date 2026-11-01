@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#111a16" />
-  <meta name="description" content="BuildSense AI explores concrete surface crack classification using PCA, LDA and a neural network." />
+  <meta name="description" content="BuildSense AI explores concrete surface crack classification using PCA and a neural network." />
   <title>BuildSense AI — Concrete Vision Lab</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,8 +26,8 @@
         <div class="hero-copy">
           <p class="eyebrow"><span class="eyebrow-line"></span> COMPUTER VISION · MACHINE LEARNING</p>
           <h1>See the surface.<br><em>Understand the pattern.</em></h1>
-          <p class="hero-description">An experimental construction-surface classifier exploring how PCA, LDA and a neural network interpret concrete crack imagery.</p>
-          <div class="hero-tags"><span>01 / Reduce</span><span>02 / Separate</span><span>03 / Classify</span></div>
+          <p class="hero-description">An experimental construction-surface classifier exploring how PCA and a neural network interpret concrete crack imagery.</p>
+          <div class="hero-tags"><span>01 / Reduce</span><span>02 / Classify</span></div>
         </div>
         <div class="hero-art" aria-hidden="true">
           <div class="scan-frame"><div class="scan-grid"></div><div class="crack-line crack-one"></div><div class="crack-line crack-two"></div><div class="crack-line crack-three"></div><div class="scan-corner tl"></div><div class="scan-corner tr"></div><div class="scan-corner bl"></div><div class="scan-corner br"></div><div class="scan-label">SURFACE / 001</div><div class="scan-coordinate">19° 04' N<br>72° 52' E</div></div>
@@ -78,7 +78,7 @@
           <div class="pca-card">
             <div class="panel-topline"><span>PCA FEATURE SPACE</span><span id="pcaStatus">WAITING</span></div>
             <div class="pca-plot" id="pcaPlot"><div class="plot-axis-x"></div><div class="plot-axis-y"></div><div class="plot-center"></div><div class="plot-placeholder">PCA projection appears after analysis</div><span class="axis-label axis-x-label">PC 1 →</span><span class="axis-label axis-y-label">PC 2 ↑</span></div>
-            <div class="pca-stats"><div><span>COMPONENTS</span><strong id="pcaComponents">—</strong></div><div><span>VARIANCE RETAINED</span><strong id="pcaVariance">—</strong></div><div><span>LDA SCORE · PREDICTED CLASS</span><strong id="ldaScore">—</strong></div></div>
+            <div class="pca-stats"><div><span>COMPONENTS</span><strong id="pcaComponents">—</strong></div><div><span>VARIANCE RETAINED</span><strong id="pcaVariance">—</strong></div></div>
           </div>
         </div>
         <section class="repair-guidance" aria-live="polite" id="repairGuidance">
@@ -98,10 +98,9 @@
       </section>
 
       <section class="method-section">
-        <div class="section-heading"><div><p class="eyebrow">03 — MODEL WORKBENCH</p><h2>Three methods. Three jobs.</h2></div><span class="step-count">STEP 03 <span>/ 03</span></span></div>
+        <div class="section-heading"><div><p class="eyebrow">03 — MODEL WORKBENCH</p><h2>Two methods. Two jobs.</h2></div><span class="step-count">STEP 03 <span>/ 03</span></span></div>
         <div class="method-grid">
           <article class="method-card"><div class="method-number">01</div><div class="method-icon">↘</div><h3>Principal Component Analysis</h3><p>Compresses thousands of pixel values into a smaller set of components while retaining the most variance in the training images.</p><div class="method-foot"><span>UNSUPERVISED</span><span>DIMENSION REDUCTION</span></div></article>
-          <article class="method-card"><div class="method-number">02</div><div class="method-icon">⫶</div><h3>Linear Discriminant Analysis</h3><p>Uses class labels to find a projection that best separates cracked and non-cracked examples.</p><div class="method-foot"><span>SUPERVISED</span><span>CLASS SEPARATION</span></div></article>
           <article class="method-card"><div class="method-number">03</div><div class="method-icon">⌘</div><h3>Neural Network</h3><p>Learns nonlinear patterns from the reduced features and predicts a class for an image it has not seen.</p><div class="method-foot"><span>SUPERVISED</span><span>CLASSIFICATION</span></div></article>
         </div>
       </section>

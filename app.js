@@ -29,7 +29,6 @@ function resetPhoto() {
   $("predictionDescription").textContent = "PCA extracts image features, and the neural network classifies the image.";
   $("confidenceValue").textContent = "—";
   $("confidenceBar").style.width = "0%";
-  $("ldaScore").textContent = "—";
 
   $("pcaStatus").textContent = "WAITING";
   $("pcaComponents").textContent = "—";
@@ -58,7 +57,7 @@ async function loadModel() {
     const response = await fetch("/model.json", { cache: "no-store" });
     if (!response.ok) throw new Error("No trained model file");
     modelData = await response.json();
-    if (!modelData || !modelData.pca || !modelData.lda || !modelData.mlp) throw new Error("Model file is incomplete");
+    if (!modelData || !modelData.pca || !modelData.mlp) throw new Error("Model file is incomplete");
     $("modelStatus").textContent = "Trained model loaded · image analysis is ready.";
     $("modelNotice").classList.add("hidden");
     analyzeButton.disabled = !selectedFile;
@@ -210,11 +209,6 @@ function projectPCA(vector, pca) {
     result[c] = sum;
   }
   return result;
-}
-function ldaDecision(features, lda) {
-  let score = lda.intercept[0];
-  for (let i = 0; i < features.length; i++) score += features[i] * lda.coef[0][i];
-  return score;
 }
 function markSuspectedCracks(image) {
   const canvas = $("markingCanvas");
@@ -406,9 +400,7 @@ analyzeButton.addEventListener("click", async () => {
     const features = projectPCA(preprocessImage(preview, modelData.image_size), modelData.pca);
     const probabilities = predictMLP(features, modelData.mlp);
     const bestIndex = probabilities.indexOf(Math.max(...probabilities));
-    const modelSaysCracked = bestIndex === modelData.cracked_class_index;
     const neuralNetworkScore = probabilities[bestIndex] * 100;
-    const score = ldaDecision(features, modelData.lda);
 
     // The displayed crack-present / no-crack result follows the image findings.
     // PCA + Neural Network remain visible as analysis methods and a separate model score.
@@ -446,12 +438,6 @@ analyzeButton.addEventListener("click", async () => {
       $("guidanceTitle").textContent = "No crack pattern detected";
       $("guidanceText").textContent = "The model classified this image as non-cracked. This does not certify that the wall is safe: hidden defects, small cracks, poor image quality, or surfaces unlike the training images may be missed. Inspect the wall if there are visible warning signs or concerns.";
     }
-    // sklearn's binary LDA decision_function is positive for classes[1]
-    // and negative for classes[0]. Keep the raw score visible, but label it.
-    const ldaClasses = modelData.lda.classes || modelData.classes;
-    const ldaClassIndex = score >= 0 ? 1 : 0;
-    const ldaClassName = ldaClasses[ldaClassIndex] || "Unknown class";
-    $("ldaScore").textContent = Number(score).toFixed(3) + " · " + ldaClassName;
     $("imageState").textContent = "ANALYSIS COMPLETE";
     drawProjection(features, modelData.pca);
     $("resultsSection").scrollIntoView({ behavior: "smooth", block: "start" });

@@ -18,7 +18,6 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 from sklearn.decomposition import PCA
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
@@ -29,7 +28,7 @@ RANDOM_STATE = 42
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Train PCA, LDA and neural-network concrete image models.")
+    parser = argparse.ArgumentParser(description="Train PCA and neural-network concrete image models.")
     parser.add_argument("--data-dir", type=Path, default=Path("data/concrete_cracks/raw"),
                         help="Directory containing one subfolder per class.")
     parser.add_argument("--image-size", type=int, default=64, help="Square grayscale image size (default: 64).")
@@ -102,13 +101,6 @@ def main():
     Z_test = pca.transform(X_test)
     print(f"PCA: {n_components} components retain {pca.explained_variance_ratio_.sum() * 100:.2f}% variance")
 
-    lda = LinearDiscriminantAnalysis(solver="svd")
-    lda.fit(Z_train, y_train)
-    lda_pred = lda.predict(Z_test)
-    print("\n=== LDA evaluation ===")
-    print(f"Accuracy: {accuracy_score(y_test, lda_pred):.4f} | Macro F1: {f1_score(y_test, lda_pred, average='macro'):.4f}")
-    print(classification_report(y_test, lda_pred, target_names=encoder.classes_, zero_division=0))
-
     mlp = MLPClassifier(
         hidden_layer_sizes=(48, 24), activation="relu", solver="adam",
         alpha=0.0005, batch_size=64, learning_rate_init=0.001,
@@ -126,8 +118,6 @@ def main():
     # Export the exact numerical parameters used by the browser inference code.
     output = args.output
     output.parent.mkdir(parents=True, exist_ok=True)
-    lda_coef = lda.coef_.tolist()
-    lda_intercept = lda.intercept_.tolist()
     payload = {
         "project": "BuildSense AI",
         "model_version": 1,
@@ -141,8 +131,6 @@ def main():
             "random_state": RANDOM_STATE,
             "pca_components": int(n_components),
             "pca_variance_retained": float(pca.explained_variance_ratio_.sum()),
-            "lda_test_accuracy": float(accuracy_score(y_test, lda_pred)),
-            "lda_macro_f1": float(f1_score(y_test, lda_pred, average="macro")),
             "mlp_test_accuracy": float(accuracy_score(y_test, mlp_pred)),
             "mlp_macro_f1": float(f1_score(y_test, mlp_pred, average="macro")),
             "confusion_matrix": confusion_matrix(y_test, mlp_pred).tolist(),
@@ -156,7 +144,6 @@ def main():
                 float(max(np.std(Z_train[:, 1]) * 3, 1e-6)) if Z_train.shape[1] > 1 else 1.0,
             ],
         },
-        "lda": {"coef": lda_coef, "intercept": lda_intercept},
         "mlp": {
             "coefs": [w.astype(float).tolist() for w in mlp.coefs_],
             "intercepts": [b.astype(float).tolist() for b in mlp.intercepts_],

@@ -1,9 +1,8 @@
 # BuildSense AI
 
-**BuildSense AI** is an educational computer-vision project for classifying concrete surface images into two labelled categories (for example, cracked and non-cracked). It demonstrates three FOML techniques in a single workflow:
+**BuildSense AI** is an educational computer-vision project for classifying concrete surface images into two labelled categories (for example, cracked and non-cracked). It demonstrates two FOML techniques in a single workflow:
 
 - **PCA (Principal Component Analysis):** reduces grayscale pixel dimensions and reports retained variance.
-- **LDA (Linear Discriminant Analysis):** learns a supervised projection/classifier from class labels.
 - **Neural Network (MLPClassifier):** predicts a class from PCA-reduced features.
 
 The web interface is a static HTML/CSS/JavaScript site. Training happens locally in Python; the exported numerical parameters are loaded in the browser for inference. This architecture avoids needing a Python inference server on Vercel.
@@ -67,13 +66,13 @@ Start with a small run first:
 python training/train.py --data-dir data/concrete_cracks/raw --max-per-class 250 --components 30
 ```
 
-Inspect the output: loaded class counts, PCA retained variance, LDA metrics, neural-network metrics, classification report and confusion matrix. If that run succeeds, try a larger experiment:
+Inspect the output: loaded class counts, PCA retained variance, neural-network metrics, classification report and confusion matrix. If that run succeeds, try a larger experiment:
 
 ```powershell
 python training/train.py --data-dir data/concrete_cracks/raw --max-per-class 1200 --components 60
 ```
 
-The script uses a stratified train/test split and a fixed random seed. It writes `public/model.json`, which contains PCA, LDA and MLP parameters plus evaluation metrics. The web page uses the PCA and MLP parameters for the displayed prediction; the LDA score is shown separately as an educational diagnostic.
+The script uses a stratified train/test split and a fixed random seed. It writes `public/model.json`, which contains PCA and MLP parameters plus evaluation metrics. The web page uses the PCA and MLP parameters for the displayed analysis.
 
 **Model export details:** the browser preprocesses images as grayscale, resized to 64×64 and scaled to [0, 1]. This must match training preprocessing. The generated JSON can be a few megabytes. Commit it only after you have trained and inspected the result.
 
@@ -122,7 +121,6 @@ If you deploy before adding a trained `model.json`, the interface should still l
 - Local browser image preview and grayscale preprocessing.
 - Neural-network prediction when a trained model file is available.
 - PCA component and retained-variance display.
-- LDA decision score display.
 - Training metrics printed to the terminal.
 
 Potential next improvements after the initial run works: a PCA reconstruction panel, a proper two-dimensional training-set scatter plot, threshold calibration, class-wise metric charts and tests for browser/Python preprocessing parity.
